@@ -1,6 +1,6 @@
 const Joi = require("joi");
 
-const contactValidation = (contact) => {
+const contactsValidation = (contact) => {
   const schema = Joi.object({
     name: Joi.string().min(3).max(30).required(),
     email: Joi.string().email().min(3).max(30).required(),
@@ -13,5 +13,5 @@ const contactValidation = (contact) => {
 };
 
 module.exports = {
-    contactValidation,
+    contactsValidation,
 }
