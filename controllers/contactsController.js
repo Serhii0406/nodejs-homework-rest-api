@@ -1,70 +1,110 @@
-const { getContactList, getContactById, removeContact, addContact, updateContact } = require("../services/contacts/utils");
-const uuid = require('uuid').v4;
-const { contactsValidation } = require('../validation/contactsValidation');
+const Contacts = require("../models/contactsModel");
+const asyncHandler = require("express-async-handler");
 
-const asyncHandler = (routeHandler) => {
-  return async (req, res, next) => {
-    try {
-      await routeHandler(req, res, next);
-    } catch (error) {
-      res.status(error.statusCode || 500).json({ error: error.message });
-    }
-  };
+const getAllContacts = asyncHandler(async (_, res) => {
+  const contacts = await Contacts.find({});
+  if (!contacts) {
+    res.status(400);
+    throw new Error("Failed to get contacts.");
+  }
+  res.status(200).json({ message: "Success.", qty: contacts.length, contacts });
+});
+
+const getContactById = asyncHandler(async (req, res) => {
+  const contactId = req.params.contactId;
+  const contactById = await await Contacts.findById(contactId);
+  if (!contactById) {
+    res.status(404);
+    throw new Error(`Contact with id=${contactId} not found`);
+  }
+  res.status(200).json(contactById);
+});
+
+const addContact = asyncHandler(async (req, res) => {
+  const { name, phone, email } = req.body;
+
+  if (!name) {
+    res.status(400);
+    throw new Error(`Error. Missing required name field.`);
+  } else if (!phone) {
+    res.status(400);
+    throw new Error(`Error. Missing required phone field.`);
+  } else if (!email) {
+    res.status(400);
+    throw new Error(`Error. Missing required email field.`);
+  }
+  const newContact = { name, phone, email };
+
+  const contact = new Contacts(newContact);
+  await contact.save();
+  res
+    .status(201)
+    .json({ message: "Success. Contact was created.", ...newContact });
+});
+
+const removeContact = asyncHandler(async (req, res) => {
+  const contactId = req.params.contactId;
+  const removedContact = await Contacts.findByIdAndRemove(contactId);
+
+  if (!removedContact) {
+    res.status(404);
+    throw new Error(`Contact with id:${contactId} was not found`);
+  }
+
+  res.status(200).json(`Success. Contact deleted.`);
+});
+
+const updateContact = asyncHandler(async (req, res) => {
+  const contactId = req.params.contactId;
+
+  const { name, email, phone } = req.body;
+
+  if (!name && !email && !phone) {
+    res.status(400);
+    throw new Error(`Missing fields.`);
+  }
+
+  const contact = await Contacts.findByIdAndUpdate(
+    contactId,
+    { $set: { ...req.body } },
+    { new: true }
+  );
+
+  if (!contact) {
+    res.status(404);
+    throw new Error(`Contact with id:${contactId} was not found`);
+  }
+
+  res.status(200).json({ message: "Success. Contact data updated.", contact });
+});
+
+const toggleFavorite = asyncHandler(async (req, res) => {
+  const contactId = req.params.contactId;
+  const { favorite } = req.body;
+
+  if (typeof favorite !== "boolean") {
+    res.status(400);
+    throw new Error(`Missing field favorite.`);
+  }
+
+  const contact = await Contacts.findByIdAndUpdate(
+    contactId,
+    { $set: { ...req.body } },
+    { new: true }
+  );
+
+  if (!contact) {
+    res.status(404);
+    throw new Error(`Contact with id:${contactId} was not found`);
+  }
+  res.status(200).json({ message: "Success. Contact was added to favorite." });
+});
+
+module.exports = {
+  getAllContacts,
+  getContactById,
+  addContact,
+  removeContact,
+  updateContact,
+  toggleFavorite,
 };
-
-exports.getContact = asyncHandler(async (req, res, next) => {
-    const contacts = await getContactList();
-    res.status(200).json(contacts);
-});
-
-exports.getContactById = asyncHandler(async (req, res, next) => {
-    const id = req.params.contactId;
-    const contactById = await getContactById(id);
-    res.status(200).json(contactById);
-});
-
-exports.createContact = asyncHandler(async (req, res, next) => {
-    const { error } = contactsValidation(req.body);
-    if (error) {
-        return res.status(400).json({ message: error.details[0].message });
-    }
-    const { name, phone, email } = req.body;
-    if (!name) {
-        return res.status(400).json(`Error. Missing required name field.`);
-    } else if (!phone) {
-        return res.status(400).json(`Error. Missing required phone field.`);
-    } else if (!email) {
-        return res.status(400).json(`Error. Missing required email field.`);
-    }
-
-    const newContact = { id: uuid(), name, phone, email };
-    addContact(newContact);
-
-    res
-        .status(201)
-        .json({ message: "Success. Contact was created.", ...newContact });
-});
-
-exports.deleteContact = asyncHandler(async (req, res, next) => {
-    await removeContact(req.params.contactId);
-    res.status(200).json(`Success. Contact deleted.`);
-});
-
-exports.updateContact = asyncHandler(async (req, res, next) => {
-    const { error } = contactsValidation(req.body);
-    if (error) {
-      return res.status(400).json({ message: error.details[0].message });
-    }
-
-    const { name, email, phone } = req.body;
-
-    if (!name && !email && !phone) {
-      res.status(400).json({ message: "missing fields" });
-      return;
-    }
-    const contact = await updateContact(req.params.contactId, req.body);
-
-    res
-      .status(200)
-      .json({ message: "Success. Contact data updated.", ...contact });
-  })
