@@ -2,7 +2,7 @@ const {
   register,
   login,
   logout,
-  updatedSubscription,
+  updatedProfile,
 } = require("./authService");
 const {
   getContacts,
@@ -14,16 +14,19 @@ const {
   countContacts,
 } = require("./contactsService");
 
+const { uploadAvatar } = require("./avatarService");
+
 module.exports = {
   register,
   login,
   logout,
-  updatedSubscription,
+  updatedProfile,
   getContacts,
   getContactById,
   addContact,
   removeContact,
   updateContact,
   toggleFavorite,
-  countContacts
+  countContacts,
+  uploadAvatar
 };
